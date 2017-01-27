@@ -25,6 +25,7 @@ class BaseModel(object):
     self.inputs = inputs
     self.checkpoint_dir = checkpoint_dir
     self.is_training = is_training
+    self.reuse = reuse
 
     self.layers = {}
     self.summaries = []
@@ -57,7 +58,7 @@ class BaseModel(object):
     """
     pass
 
-  def _train_step(self, sess, start_time, run_options=None, run_metadata=None):
+  def _train_step(self, sess, run_options=None, run_metadata=None):
     """Step of the training loop.
 
     Returns:
@@ -67,6 +68,7 @@ class BaseModel(object):
     tofetch = self._tofetch()
     tofetch['step'] = self.global_step
     tofetch['summaries'] = self.merged_summaries
+    start_time = time.time()
     data = sess.run(tofetch, options=run_options, run_metadata=run_metadata)
     data['duration'] = time.time()-start_time
     return data
@@ -87,9 +89,14 @@ class BaseModel(object):
       sess (tf.Session): current session in which the parameters are imported.
     """
     checkpoint_path = tf.train.latest_checkpoint(self.checkpoint_dir)
-    self.saver.restore(sess, checkpoint_path)
-    step = tf.train.global_step(sess, self.global_step)
-    print 'Loaded model at step {} from snapshot {}.'.format(step, checkpoint_path)
+    if checkpoint_path is None:
+      print 'Model not loaded, checkpoint not found: {}'.format(checkpoint_path)
+      return False
+    else:
+      self.saver.restore(sess, checkpoint_path)
+      step = tf.train.global_step(sess, self.global_step)
+      print 'Loaded model at step {} from snapshot {}.'.format(step, checkpoint_path)
+      return True
 
   def save(self, sess):
     """Saves a checkpoint to disk.
@@ -115,7 +122,7 @@ class BaseModel(object):
     lr = tf.Variable(learning_rate, name='learning_rate',
         trainable=False,
         collections=[tf.GraphKeys.GLOBAL_VARIABLES])
-    self.summaries.append(tf.scalar_summary('learning_rate', lr))
+    self.summaries.append(tf.summary.scalar('learning_rate', lr))
 
     # Optimizer
     self._setup_loss()
@@ -130,26 +137,29 @@ class BaseModel(object):
       run_metadata = None
 
     # Summaries
-    self.merged_summaries = tf.merge_summary(self.summaries)
+    self.merged_summaries = tf.summary.merge(self.summaries)
 
-    with tf.Session() as sess:
-      self.summary_writer = tf.train.SummaryWriter(self.checkpoint_dir, sess.graph)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config) as sess:
+      self.summary_writer = tf.summary.FileWriter(self.checkpoint_dir, graph=sess.graph)
 
       print 'Initializing all variables.'
       tf.local_variables_initializer().run()
       tf.global_variables_initializer().run()
       if resume:
-        self.load(sess)
+        has_chkpt = self.load(sess)
+        if not has_chkpt:
+          print 'No checkpoint found, training from scratch.'
 
       print 'Starting data threads coordinator.'
       coord = tf.train.Coordinator()
       threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
       print 'Starting optimization.'
-      start_time = time.time()
       try:
         while not coord.should_stop():  # Training loop
-          step_data = self._train_step(sess, start_time, run_options, run_metadata)
+          step_data = self._train_step(sess, run_options, run_metadata)
           step = step_data['step']
 
           if step > 0 and step % summary_step == 0:
