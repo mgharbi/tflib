@@ -236,7 +236,7 @@ def batch_norm(inputs, center=False, scale=False,
   return tf.contrib.layers.batch_norm(
     inputs, center=center, scale=scale,
     decay=decay, epsilon=epsilon, activation_fn=None,
-    reuse=reuse,trainable=False, fused=False, scope=scope, is_training=is_training)
+    reuse=reuse, trainable=True, fused=False, scope=scope, is_training=is_training)
 
 relu = tf.nn.relu
 
