@@ -86,7 +86,6 @@ def separable_conv(inputs,
     return current_layer
 
 def depthwise_conv(inputs,
-         nfilters,
          ksize,
          stride=1,
          chan_multiplier=1,
@@ -113,7 +112,7 @@ def depthwise_conv(inputs,
     if use_bias:
       biases = tf.get_variable(
         'biases',
-        shape=[nfilters,],
+        shape=[n_in*chan_multiplier,],
         dtype=inputs.dtype.base_dtype,
         initializer=tf.constant_initializer(0.0),
         collections=[tf.GraphKeys.BIASES, tf.GraphKeys.GLOBAL_VARIABLES])
@@ -145,9 +144,10 @@ def transpose_conv(inputs,
       collections=[tf.GraphKeys.WEIGHTS, tf.GraphKeys.GLOBAL_VARIABLES],
       regularizer=regularizer)
 
-    bs, h, w, c = inputs.get_shape().as_list()
+    # bs, h, w, c = inputs.get_shape().as_list()
+    sz = tf.shape(inputs)
     strides = [1, stride, stride, 1]
-    out_shape = [bs, stride*h, stride*w, nfilters] 
+    out_shape = tf.stack([sz[0], stride*sz[1], stride*sz[2], nfilters])
     current_layer = tf.nn.conv2d_transpose(inputs, weights, out_shape, strides, padding=padding)
 
     if use_bias:
@@ -241,15 +241,25 @@ def batch_norm(inputs, center=False, scale=False,
 relu = tf.nn.relu
 
 def crop_like(inputs, like, name=None):
-  with tf.name_scope(name):
-    _, h, w, _ = inputs.get_shape().as_list()
-    _, new_h, new_w, _ = like.get_shape().as_list()
-    crop_h = (h-new_h)/2
-    crop_w = (w-new_w)/2
-    cropped = inputs[:, crop_h:crop_h+new_h, crop_w:crop_w+new_w, :]
+  with tf.name_scope(name, default_name='crop_like', values=[inputs, like]):
+    sz = tf.shape(inputs)
+    new_sz = tf.shape(like)
+
+    start_h = (sz[1]-new_sz[1])/2
+    start_w = (sz[2]-new_sz[2])/2
+    offset = [0, start_h, start_w, 0]
+
+    new_sz = [sz[0], new_sz[1], new_sz[2], sz[3]]
+    cropped = tf.slice(inputs, offset, new_sz)
+
+    st_sz = inputs.get_shape().as_list()
+    st_new_sz = like.get_shape().as_list()
+    new_st_sz = [st_sz[0], st_new_sz[1], st_new_sz[2], st_sz[3]]
+    cropped.set_shape(new_st_sz)
     return cropped
 
 def pixel_shuffle_upsample(im, factor, name='pixel_shuffle_upsample'):
+  raise ValueError("PSUpsample not tested")
   with tf.name_scope(name):
     bs, h, w, nfilters = im.get_shape().as_list()
     if nfilters % (factor*factor) != 0:
