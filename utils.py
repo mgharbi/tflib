@@ -11,6 +11,7 @@ def get_params_summaries():
   weights = tf.get_collection(tf.GraphKeys.WEIGHTS)
   biases = tf.get_collection(tf.GraphKeys.BIASES)
   moving_averages = tf.get_collection(tf.GraphKeys.MOVING_AVERAGE_VARIABLES)
+  activations = tf.get_collection(tf.GraphKeys.ACTIVATIONS)
   summaries = []
 
   for w in weights:
@@ -32,4 +33,7 @@ def get_params_summaries():
   for v in moving_averages:
     name = v.name.split(':')[0]
     summaries.append(tf.summary.histogram('moving_averages/{}'.format(name), v))
+  for a in activations:
+    name = a.name.split(':')[0]
+    summaries.append(tf.summary.histogram('activations/{}'.format(name), a))
   return summaries
