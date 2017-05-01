@@ -244,17 +244,17 @@ def crop_like(inputs, like, name=None):
   with tf.name_scope(name, default_name='crop_like', values=[inputs, like]):
     sz = tf.shape(inputs)
     new_sz = tf.shape(like)
+    st_sz = inputs.get_shape().as_list()
+    st_new_sz = like.get_shape().as_list()
 
     start_h = (sz[1]-new_sz[1])/2
     start_w = (sz[2]-new_sz[2])/2
-    offset = [0, start_h, start_w, 0]
+    offset = tf.concat([[0, start_h, start_w], tf.zeros([len(st_sz[3:]),], tf.int32)], 0)
 
-    new_sz = [sz[0], new_sz[1], new_sz[2], sz[3]]
+    new_sz = tf.concat([[sz[0], new_sz[1], new_sz[2]], sz[3:]], 0)
     cropped = tf.slice(inputs, offset, new_sz)
 
-    st_sz = inputs.get_shape().as_list()
-    st_new_sz = like.get_shape().as_list()
-    new_st_sz = [st_sz[0], st_new_sz[1], st_new_sz[2], st_sz[3]]
+    new_st_sz = [st_sz[0], st_new_sz[1], st_new_sz[2]] + st_sz[3:]
     cropped.set_shape(new_st_sz)
     return cropped
 
