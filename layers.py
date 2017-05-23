@@ -276,3 +276,6 @@ def pixel_shuffle_upsample(im, factor, name='pixel_shuffle_upsample'):
     ret = tf.concat(new_chans, 3)
 
     return ret
+
+def lrelu(x, leak=0.2, name="lrelu"):
+  return tf.maximum(x, leak*x)
