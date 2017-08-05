@@ -64,8 +64,6 @@ def main(args):
     src_saver = tf.train.Saver(vars_to_load)
     dst_saver = tf.train.Saver(tf.global_variables())
 
-    print sess.run(tf.reduce_mean(vars_to_load[0])), vars_to_load[0].name
-
     print "loading src checkpoint {} with {} variables".format(src_path, len(vars_to_load))
     src_saver.restore(sess, src_path)
 
@@ -75,6 +73,10 @@ def main(args):
     if not os.path.exists(args.dst):
       os.makedirs(args.dst)
     dst_saver.save(sess, new_path, global_step=0)
+
+    print "Vars loaded:"
+    for v in vars_to_load:
+      print v.name
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
