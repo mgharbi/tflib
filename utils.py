@@ -10,6 +10,7 @@ def get_model_params(sess, param_collection="model_params"):
 def get_params_summaries():
   weights = tf.get_collection(tf.GraphKeys.WEIGHTS)
   biases = tf.get_collection(tf.GraphKeys.BIASES)
+  activations = tf.get_collection(tf.GraphKeys.ACTIVATIONS)
   summaries = []
 
   for w in weights:
@@ -28,4 +29,7 @@ def get_params_summaries():
   for b in biases:
     name = b.name.split('/biases')[0]
     summaries.append(tf.summary.histogram('biases/{}'.format(name), b))
+  for a in activations:
+    name = a.name.split(':')[0]
+    summaries.append(tf.summary.histogram('activations/{}'.format(name), a))
   return summaries
