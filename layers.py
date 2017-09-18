@@ -277,5 +277,6 @@ def pixel_shuffle_upsample(im, factor, name='pixel_shuffle_upsample'):
 
     return ret
 
-def lrelu(x, leak=0.2, name="lrelu"):
-  return tf.maximum(x, leak*x)
+def lrelu(x, leak=0.2, name=None):
+  with tf.name_scope(name, default_name='lrelu', values=[x, leak]):
+    return tf.maximum(x, leak*x)
